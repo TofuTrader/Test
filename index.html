@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<title>3D Walk-in 室內導覽｜離線單檔</title>
+<style>
+  :root{--bg:#0e1116;--panel:rgba(19,24,31,.9);--line:rgba(255,255,255,.15);--text:#eef2f6;--muted:#aeb9c4;--accent:#7dd3fc;--good:#86efac;--warn:#fde68a}
+  *{box-sizing:border-box} html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif}
+  #gl{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block;background:linear-gradient(#b9d5e6,#dce7ec 55%,#c7c3b8)}
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;gap:8px;align-items:center;padding:calc(8px + env(safe-area-inset-top)) 10px 8px;background:linear-gradient(rgba(6,9,13,.92),rgba(6,9,13,.52),transparent);pointer-events:none}
+  .brand{font-weight:800;font-size:14px;letter-spacing:.02em;text-shadow:0 1px 4px #000;pointer-events:auto}.brand span{display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:2px}
+  .toolbar{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;pointer-events:auto}
+  button,.chip{appearance:none;border:1px solid var(--line);background:rgba(14,19,26,.82);color:var(--text);border-radius:10px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer;backdrop-filter:blur(8px)}
+  button:hover{background:rgba(35,45,58,.92)} button.active{border-color:rgba(125,211,252,.7);box-shadow:0 0 0 1px rgba(125,211,252,.18) inset;color:#dff6ff}
+  .side{position:fixed;z-index:18;left:10px;top:78px;width:min(310px,calc(100vw - 20px));max-height:calc(100vh - 100px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;backdrop-filter:blur(10px)}
+  .side h2{font-size:13px;margin:0 0 8px}.rooms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.rooms button{padding:7px 8px;text-align:left}
+  .help{font-size:11px;line-height:1.55;color:var(--muted);margin-top:10px;border-top:1px solid var(--line);padding-top:8px}.help b{color:var(--text)}
+  details{margin-top:8px;border-top:1px solid var(--line);padding-top:8px} summary{cursor:pointer;font-size:12px;font-weight:800}.assumptions{font-size:11px;line-height:1.55;color:var(--muted);padding-left:17px;margin:8px 0 0}.assumptions li+li{margin-top:4px}
+  #miniWrap{position:fixed;z-index:19;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));width:190px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;backdrop-filter:blur(8px)}
+  #mini{width:174px;height:142px;display:block;border-radius:7px;background:#f2efe7} .miniTitle{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:5px}.miniTitle b{color:var(--text)}
+  #toast{position:fixed;left:50%;bottom:24px;z-index:30;transform:translateX(-50%);background:rgba(0,0,0,.72);padding:9px 13px;border:1px solid var(--line);border-radius:999px;font-size:12px;opacity:0;transition:.2s;pointer-events:none;white-space:nowrap}.show{opacity:1!important}
+  #crosshair{position:fixed;left:50%;top:50%;width:14px;height:14px;margin:-7px;z-index:12;display:none;pointer-events:none}#crosshair:before,#crosshair:after{content:"";position:absolute;background:rgba(255,255,255,.75)}#crosshair:before{width:14px;height:1px;top:6px}#crosshair:after{height:14px;width:1px;left:6px}
+  #joy{display:none;position:fixed;left:18px;bottom:calc(22px + env(safe-area-inset-bottom));z-index:25;width:118px;height:118px;border:1px solid rgba(255,255,255,.22);border-radius:50%;background:rgba(7,12,18,.28);touch-action:none}#knob{position:absolute;width:48px;height:48px;left:35px;top:35px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.22);box-shadow:0 5px 18px rgba(0,0,0,.25)}
+  #interact{display:none;position:fixed;right:18px;bottom:calc(28px + env(safe-area-inset-bottom));z-index:25;width:64px;height:64px;border-radius:50%;font-size:13px;padding:0;background:rgba(14,19,26,.72)}
+  #selfTest{display:none;position:fixed;z-index:99;left:8px;bottom:8px;background:#fff;color:#111;padding:8px;border-radius:6px;font:12px monospace;max-width:80vw;white-space:pre-wrap}
+  @media(max-width:760px){.topbar{align-items:flex-start}.brand{max-width:140px}.toolbar{gap:4px}.toolbar button{padding:7px 8px;font-size:11px}.side{top:112px;width:232px;max-height:42vh;padding:9px}.rooms{grid-template-columns:1fr 1fr}.help{display:none}#miniWrap{width:150px;padding:6px}#mini{width:136px;height:112px}.miniTitle{font-size:9px}.side details{font-size:10px}.assumptions{font-size:10px}body.fp #joy,body.fp #interact{display:block}body.fp #miniWrap{bottom:150px}body.fp .side{display:none}}
+  @media(max-width:430px){.brand span{display:none}.topbar{padding-left:7px;padding-right:7px}.toolbar button{padding:6px 7px}.side{top:100px}.brand{font-size:12px}}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="topbar">
+  <div class="brand">假設住宅｜3D Walk-in<span>單一 HTML・完全離線・無外部資產</span></div>
+  <div class="toolbar">
+    <button id="orbitBtn" class="active">鳥瞰</button>
+    <button id="fpBtn">第一人稱</button>
+    <button id="cutBtn">剖牆：關</button>
+    <button id="resetBtn">重設視角</button>
+    <button id="panelBtn">房間/假設</button>
+  </div>
+</div>
+<aside class="side" id="side">
+  <h2>房間定位</h2>
+  <div class="rooms">
+    <button data-room="living">客餐廳</button><button data-room="kitchen">廚房</button>
+    <button data-room="master">主臥</button><button data-room="bed2">次臥</button>
+    <button data-room="bath">衛浴</button><button data-room="entry">入口</button>
+  </div>
+  <div class="help">
+    <b>鳥瞰：</b>左鍵/單指旋轉，右鍵或 Shift+拖曳平移，滾輪/雙指縮放。<br>
+    <b>第一人稱：</b>拖曳轉頭，WASD/方向鍵移動；手機左下搖桿移動、右側畫面拖曳轉頭。<br>
+    <b>互動：</b>點選門片或櫃門可開關；第一人稱可按右下「互動」。牆體與主要家具具有碰撞。
+  </div>
+  <details open>
+    <summary>模型假設（無附件時使用）</summary>
+    <ul class="assumptions">
+      <li>本案為示意兩房住宅，外框約 10.0 × 8.0 m，約 80 m²；非任何實際圖面還原。</li>
+      <li>淨高採 2.80 m；外牆厚約 18 cm、內牆厚約 12 cm。</li>
+      <li>門寬約 90 cm、門高約 210 cm；窗台及窗尺寸依空間功能合理配置。</li>
+      <li>家具、櫃體、地坪與燈光為示意材質；衣櫃設背板、側板、層板與可開櫃門。</li>
+      <li>「剖牆」只改變顯示高度，碰撞邊界仍按完整牆體保留。</li>
+    </ul>
+  </details>
+</aside>
+<div id="miniWrap"><div class="miniTitle"><b>小地圖</b><span id="modeLabel">鳥瞰模式</span></div><canvas id="mini" width="348" height="284"></canvas></div>
+<div id="crosshair"></div><div id="joy"><div id="knob"></div></div><button id="interact">互動</button><div id="toast"></div><div id="selfTest"></div>
+<script>
+(()=>{
+'use strict';
+const canvas=document.getElementById('gl'), gl=canvas.getContext('webgl',{antialias:true,alpha:false});
+if(!gl){document.body.innerHTML='<div style="padding:30px;color:white">此瀏覽器不支援 WebGL。</div>';return}
+const mini=document.getElementById('mini'), mg=mini.getContext('2d');
+const orbitBtn=document.getElementById('orbitBtn'),fpBtn=document.getElementById('fpBtn'),cutBtn=document.getElementById('cutBtn'),resetBtn=document.getElementById('resetBtn'),side=document.getElementById('side'),panelBtn=document.getElementById('panelBtn'),crosshair=document.getElementById('crosshair'),toast=document.getElementById('toast'),modeLabel=document.getElementById('modeLabel'),interactBtn=document.getElementById('interact');
+
+// ---------- minimal matrix / vector math ----------
+const v3=(x=0,y=0,z=0)=>[x,y,z];
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]], mul=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const norm=a=>{const l=Math.hypot(...a)||1;return a.map(x=>x/l)};
+const I=()=>new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
+function mm(a,b){const o=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){o[c*4+r]=0;for(let k=0;k<4;k++)o[c*4+r]+=a[k*4+r]*b[c*4+k]}return o}
+function T(x,y,z){const m=I();m[12]=x;m[13]=y;m[14]=z;return m}
+function S(x,y,z){const m=I();m[0]=x;m[5]=y;m[10]=z;return m}
+function RY(a){const c=Math.cos(a),s=Math.sin(a),m=I();m[0]=c;m[2]=-s;m[8]=s;m[10]=c;return m}
+function perspective(fov,asp,n,f){const q=1/Math.tan(fov/2),m=new Float32Array(16);m[0]=q/asp;m[5]=q;m[10]=(f+n)/(n-f);m[11]=-1;m[14]=2*f*n/(n-f);return m}
+function lookAt(eye,at,up=[0,1,0]){const z=norm(sub(eye,at)),x=norm(cross(up,z)),y=cross(z,x),m=I();m[0]=x[0];m[1]=y[0];m[2]=z[0];m[4]=x[1];m[5]=y[1];m[6]=z[1];m[8]=x[2];m[9]=y[2];m[10]=z[2];m[12]=-dot(x,eye);m[13]=-dot(y,eye);m[14]=-dot(z,eye);return m}
+function inv4(a){const o=new Float32Array(16);const b00=a[0]*a[5]-a[1]*a[4],b01=a[0]*a[6]-a[2]*a[4],b02=a[0]*a[7]-a[3]*a[4],b03=a[1]*a[6]-a[2]*a[5],b04=a[1]*a[7]-a[3]*a[5],b05=a[2]*a[7]-a[3]*a[6],b06=a[8]*a[13]-a[9]*a[12],b07=a[8]*a[14]-a[10]*a[12],b08=a[8]*a[15]-a[11]*a[12],b09=a[9]*a[14]-a[10]*a[13],b10=a[9]*a[15]-a[11]*a[13],b11=a[10]*a[15]-a[11]*a[14];let d=b00*b11-b01*b10+b02*b09+b03*b08-b04*b07+b05*b06;if(!d)return I();d=1/d;o[0]=(a[5]*b11-a[6]*b10+a[7]*b09)*d;o[1]=(-a[1]*b11+a[2]*b10-a[3]*b09)*d;o[2]=(a[13]*b05-a[14]*b04+a[15]*b03)*d;o[3]=(-a[9]*b05+a[10]*b04-a[11]*b03)*d;o[4]=(-a[4]*b11+a[6]*b08-a[7]*b07)*d;o[5]=(a[0]*b11-a[2]*b08+a[3]*b07)*d;o[6]=(-a[12]*b05+a[14]*b02-a[15]*b01)*d;o[7]=(a[8]*b05-a[10]*b02+a[11]*b01)*d;o[8]=(a[4]*b10-a[5]*b08+a[7]*b06)*d;o[9]=(-a[0]*b10+a[1]*b08-a[3]*b06)*d;o[10]=(a[12]*b04-a[13]*b02+a[15]*b00)*d;o[11]=(-a[8]*b04+a[9]*b02-a[11]*b00)*d;o[12]=(-a[4]*b09+a[5]*b07-a[6]*b06)*d;o[13]=(a[0]*b09-a[1]*b07+a[2]*b06)*d;o[14]=(-a[12]*b03+a[13]*b01-a[14]*b00)*d;o[15]=(a[8]*b03-a[9]*b01+a[10]*b00)*d;return o}
+function tr4(m,v){const x=v[0],y=v[1],z=v[2],w=v[3]??1;return[m[0]*x+m[4]*y+m[8]*z+m[12]*w,m[1]*x+m[5]*y+m[9]*z+m[13]*w,m[2]*x+m[6]*y+m[10]*z+m[14]*w,m[3]*x+m[7]*y+m[11]*z+m[15]*w]}
+
+// ---------- shaders ----------
+const vs=`attribute vec3 p;attribute vec3 n;uniform mat4 m;uniform mat4 vp;varying vec3 N;varying vec3 W;void main(){vec4 w=m*vec4(p,1.0);W=w.xyz;N=normalize(mat3(m)*n);gl_Position=vp*w;}`;
+const fs=`precision mediump float;varying vec3 N;varying vec3 W;uniform vec4 c;void main(){vec3 L=normalize(vec3(-0.45,0.9,0.35));float d=max(dot(normalize(N),L),0.0);float amb=.50;float dist=max(length(W-vec3(5.0,2.6,4.0)),1.0);float fill=0.16/(1.0+.025*dist*dist);vec3 col=c.rgb*(amb+d*.48+fill);gl_FragColor=vec4(col,c.a);}`;
+function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(s);return s}
+const prog=gl.createProgram();gl.attachShader(prog,sh(gl.VERTEX_SHADER,vs));gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(prog);gl.useProgram(prog);
+const loc={p:gl.getAttribLocation(prog,'p'),n:gl.getAttribLocation(prog,'n'),m:gl.getUniformLocation(prog,'m'),vp:gl.getUniformLocation(prog,'vp'),c:gl.getUniformLocation(prog,'c')};
+const cube=[];function face(a,b,c,d,n){cube.push(...a,...n,...b,...n,...c,...n,...a,...n,...c,...n,...d,...n)}
+face([-0.5,-0.5,0.5],[0.5,-0.5,0.5],[0.5,0.5,0.5],[-0.5,0.5,0.5],[0,0,1]);face([0.5,-0.5,-0.5],[-0.5,-0.5,-0.5],[-0.5,0.5,-0.5],[0.5,0.5,-0.5],[0,0,-1]);face([-0.5,-0.5,-0.5],[-0.5,-0.5,0.5],[-0.5,0.5,0.5],[-0.5,0.5,-0.5],[-1,0,0]);face([0.5,-0.5,0.5],[0.5,-0.5,-0.5],[0.5,0.5,-0.5],[0.5,0.5,0.5],[1,0,0]);face([-0.5,0.5,0.5],[0.5,0.5,0.5],[0.5,0.5,-0.5],[-0.5,0.5,-0.5],[0,1,0]);face([-0.5,-0.5,-0.5],[0.5,-0.5,-0.5],[0.5,-0.5,0.5],[-0.5,-0.5,0.5],[0,-1,0]);
+const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(cube),gl.STATIC_DRAW);const stride=24;gl.enableVertexAttribArray(loc.p);gl.vertexAttribPointer(loc.p,3,gl.FLOAT,false,stride,0);gl.enableVertexAttribArray(loc.n);gl.vertexAttribPointer(loc.n,3,gl.FLOAT,false,stride,12);
+gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);
+
+// ---------- scene ----------
+const meshes=[], colliders=[], interactables=[];
+const C={wall:[.86,.84,.78,1],wall2:[.72,.76,.79,1],wood:[.56,.36,.22,1],wood2:[.72,.56,.38,1],white:[.90,.90,.86,1],sofa:[.38,.48,.53,1],bed:[.72,.74,.71,1],linen:[.88,.84,.78,1],dark:[.20,.23,.25,1],glass:[.35,.68,.78,.45],floor:[.72,.67,.58,1],tile:[.72,.75,.74,1],green:[.52,.64,.52,1],blue:[.48,.58,.67,1]};
+function box(name,x,y,z,w,h,d,color=C.white,opt={}){const o={name,x,y,z,w,h,d,color,ry:opt.ry||0,visible:true,collide:!!opt.collide,cuttable:!!opt.cuttable,kind:opt.kind||'box',hinge:opt.hinge||null,open:0,targetOpen:0,base:{x,y,z,ry:opt.ry||0}};meshes.push(o);if(o.collide)colliders.push(o);if(opt.interact)interactables.push(o);return o}
+function wallSeg(name,x,z,w,d,cut=true){return box(name,x,1.4,z,w,2.8,d,C.wall,{collide:true,cuttable:cut,kind:'wall'})}
+function floor(name,x,z,w,d,color){box(name,x,-.06,z,w,.12,d,color,{kind:'floor'})}
+// floors
+floor('客餐廳',3.2,2.15,6.2,3.9,C.floor);floor('廚房',8.15,1.8,3.5,3.2,C.tile);floor('主臥',2.65,6.05,4.9,3.5,[.66,.60,.50,1]);floor('次臥',6.4,6.2,2.2,3.2,[.69,.64,.53,1]);floor('衛浴',8.8,6.2,2.2,3.2,[.68,.72,.72,1]);floor('過道',6.4,4.28,7.0,.55,C.floor);
+// outer walls with openings
+wallSeg('南外牆A',2.45,0,4.9,.18);wallSeg('南外牆B',7.95,0,4.1,.18); // entry gap 4.9-5.9
+wallSeg('北外牆A',1.2,8,2.4,.18);wallSeg('北外牆B',3.9,8,1.8,.18);wallSeg('北外牆C',6.45,8,2.3,.18);wallSeg('北外牆D',9.1,8,1.8,.18);
+wallSeg('西外牆A',0,1.0,.18,2.0);wallSeg('西外牆B',0,3.35,.18,1.3);wallSeg('西外牆C',0,5.35,.18,1.3);wallSeg('西外牆D',0,7.35,.18,1.3);
+wallSeg('東外牆A',10,1.1,.18,2.2);wallSeg('東外牆B',10,3.0,.18,1.0);wallSeg('東外牆C',10,5.2,.18,1.2);wallSeg('東外牆D',10,7.25,.18,1.5);
+// windows
+box('客廳西窗',.0,1.55,2.2,.08,1.25,1.0,C.glass,{kind:'glass'});box('主臥西窗',.0,1.55,6.35,.08,1.25,1.0,C.glass,{kind:'glass'});box('主臥北窗',2.55,1.55,8,1.4,1.25,.08,C.glass,{kind:'glass'});box('次臥北窗',6.35,1.55,8,1.25,1.25,.08,C.glass,{kind:'glass'});box('浴室東窗',10,1.72,6.35,.08,.75,.75,C.glass,{kind:'glass'});box('廚房東窗',10,1.55,2.0,.08,1.0,1.0,C.glass,{kind:'glass'});
+// interior walls / door gaps
+wallSeg('主臥牆A',2.05,4.2,4.1,.12,false);wallSeg('主臥牆B',5.125,4.2,.15,.12,false);
+wallSeg('次臥牆A',5.6,4.6,.8,.12,false);wallSeg('次臥牆B',7.25,4.6,.7,.12,false);
+wallSeg('衛浴牆A',7.9,4.6,.6,.12,false);wallSeg('衛浴牆B',9.55,4.6,.9,.12,false);
+wallSeg('主次隔牆',5.2,6.1,.12,3.8,false);wallSeg('次浴隔牆',7.6,6.3,.12,3.4,false);
+// partial kitchen divider / breakfast ledge
+box('廚房矮牆',6.65,.55,2.95,.15,1.1,1.5,C.wall2,{collide:true});
+// doors
+function door(name,hx,z,alongX=true,side=1){const d=alongX?box(name,hx+.45*side,1.05,z,.9,2.1,.05,C.wood2,{collide:true,interact:true,kind:'door'}):box(name,hx,1.05,z+.45*side,.05,2.1,.9,C.wood2,{collide:true,interact:true,kind:'door'});d.hinge={x:hx,z,alongX,side};d.closed={x:d.x,z:d.z,ry:d.ry};return d}
+const entryDoor=door('玄關門',4.95,0,true,1);const masterDoor=door('主臥門',4.15,4.2,true,1);const bed2Door=door('次臥門',6.0,4.6,true,1);const bathDoor=door('衛浴門',8.2,4.6,true,1);
+// living furniture
+box('沙發座',2.55,.42,2.55,2.5,.65,.9,C.sofa,{collide:true});box('沙發背',2.55,.82,2.95,2.5,.8,.18,C.sofa,{collide:true});box('茶几',2.55,.26,1.65,1.15,.45,.65,C.wood2,{collide:true});box('電視櫃',.55,.28,2.5,.55,.55,1.9,C.dark,{collide:true,ry:Math.PI/2});box('電視',.58,1.15,2.5,.08,1.1,1.6,[.05,.06,.07,1],{ry:Math.PI/2});
+box('餐桌',5.15,.39,1.35,1.4,.78,.8,C.wood,{collide:true});for(const [x,z] of [[4.45,1.35],[5.85,1.35],[5.15,.75],[5.15,1.95]])box('餐椅',x,.43,z,.45,.86,.45,C.wood2,{collide:false});
+// kitchen counters and cabinet units
+box('廚房底櫃E',9.45,.45,1.6,.8,.9,2.65,C.white,{collide:true});box('工作檯',9.42,.94,1.6,.86,.08,2.7,C.dark,{collide:true});box('廚房底櫃S',8.0,.45,.55,2.2,.9,.8,C.white,{collide:true});box('工作檯S',8.0,.94,.58,2.25,.08,.86,C.dark,{collide:true});box('冰箱',7.0,1.0,.55,.78,2.0,.8,[.72,.74,.75,1],{collide:true});
+// master bed / wardrobe with interior structure
+box('雙人床架',2.35,.25,6.25,2.0,.45,2.05,C.wood,{collide:true});box('床墊',2.35,.53,6.25,1.9,.25,1.95,C.linen,{collide:true});box('床頭',2.35,1.0,7.25,2.0,1.1,.16,C.wood2,{collide:true});
+// wardrobe carcass at x=4.65, front facing -z
+box('衣櫃背板',4.68,1.25,6.55,.95,2.5,.06,C.wood2,{collide:true});box('衣櫃左側',4.22,1.25,6.22,.06,2.5,.7,C.wood2,{collide:true});box('衣櫃右側',5.14,1.25,6.22,.06,2.5,.7,C.wood2,{collide:true});box('衣櫃頂',4.68,2.47,6.22,.95,.06,.7,C.wood2,{collide:true});box('衣櫃底',4.68,.08,6.22,.95,.12,.7,C.wood2,{collide:true});box('衣櫃層板1',4.68,.75,6.22,.9,.05,.65,C.wood2,{});box('衣櫃層板2',4.68,1.55,6.22,.9,.05,.65,C.wood2,{});
+function cabDoor(name,hx,z,side){const d=box(name,hx+.23*side,1.25,z,.46,2.35,.045,C.white,{interact:true,kind:'cabdoor'});d.hinge={x:hx,z,alongX:true,side};d.closed={x:d.x,z:d.z,ry:0};return d}
+const cab1=cabDoor('衣櫃左門',4.22,5.86,1),cab2=cabDoor('衣櫃右門',5.14,5.86,-1);
+// bedroom 2
+box('單人床',5.9,.35,6.75,1.0,.55,1.95,C.bed,{collide:true});box('書桌',5.8,.38,5.25,.85,.76,.48,C.wood2,{collide:true});box('書桌椅',5.8,.43,5.8,.45,.86,.45,C.wood,{collide:false});
+// bath
+box('洗手台櫃',9.25,.4,5.25,.78,.8,.5,C.white,{collide:true});box('面盆',9.25,.84,5.25,.7,.12,.45,[.93,.94,.92,1],{collide:true});box('馬桶',9.25,.35,6.25,.45,.7,.72,C.white,{collide:true});box('淋浴台',8.85,.05,7.1,1.4,.1,1.25,C.tile,{collide:false});box('淋浴玻璃',8.15,1.1,7.1,.05,2.05,1.2,C.glass,{kind:'glass'});
+// ceiling bands / lights (visual only)
+for(const [x,z] of [[2.5,2],[5,2],[8,1.5],[2.5,6.2],[6.4,6.2],[8.8,6.2]])box('吸頂燈',x,2.72,z,.32,.08,.32,[1,.96,.78,1],{});
+
+const rooms={living:{label:'客餐廳',p:[3.55,1.62,1.0],orbit:[3.2,0,2.1]},kitchen:{label:'廚房',p:[7.8,1.62,2.2],orbit:[8.0,0,1.7]},master:{label:'主臥',p:[3.65,1.62,5.15],orbit:[2.7,0,6.0]},bed2:{label:'次臥',p:[7.0,1.62,6.8],orbit:[6.4,0,6.1]},bath:{label:'衛浴',p:[8.2,1.62,6.4],orbit:[8.8,0,6.2]},entry:{label:'入口',p:[5.45,1.62,.65],orbit:[5.4,0,.9]}};
+
+// ---------- interaction and camera ----------
+let mode='orbit',cut=false,lastVP=I();
+const cam={target:[5,0,4],yaw:-.8,pitch:.72,dist:13,fp:[3.55,1.62,1.0],fyaw:0.35,fpitch:0};
+const keys={}, joy={x:0,y:0};
+function setMode(m){mode=m;document.body.classList.toggle('fp',m==='fp');orbitBtn.classList.toggle('active',m==='orbit');fpBtn.classList.toggle('active',m==='fp');crosshair.style.display=m==='fp'?'block':'none';modeLabel.textContent=m==='fp'?'第一人稱':'鳥瞰模式';showToast(m==='fp'?'第一人稱：拖曳轉頭，WASD 移動':'鳥瞰：拖曳旋轉，滾輪縮放')}
+function resetView(){if(mode==='orbit'){cam.target=[5,0,4];cam.yaw=-.8;cam.pitch=.72;cam.dist=13}else{cam.fp=[3.55,1.62,1.0];cam.fyaw=.35;cam.fpitch=0}showToast('視角已重設')}
+function showToast(t){toast.textContent=t;toast.classList.add('show');clearTimeout(showToast.t);showToast.t=setTimeout(()=>toast.classList.remove('show'),1300)}
+function locate(k){const r=rooms[k];if(!r)return;if(mode==='orbit'){cam.target=[...r.orbit];cam.dist=7.6;cam.pitch=.72}else{cam.fp=[...r.p];cam.fyaw=0;cam.fpitch=0}showToast('已定位：'+r.label)}
+function applyHinge(o){if(!o.hinge)return;const a=o.targetOpen*(Math.PI/2)*o.hinge.side, hx=o.hinge.x,hz=o.hinge.z;if(o.kind==='door'||o.kind==='cabdoor'){const half=o.w/2;const cx=hx+Math.cos(a)*half*o.hinge.side,cz=hz-Math.sin(a)*half*o.hinge.side;o.x=cx;o.z=cz;o.ry=-a;o.open=o.targetOpen}}
+function toggle(o){o.targetOpen=o.targetOpen>.5?0:1;applyHinge(o);showToast(o.name+(o.targetOpen?'已開啟':'已關閉'))}
+function aabb(o){const c=Math.abs(Math.cos(o.ry)),s=Math.abs(Math.sin(o.ry));return{x:o.x,z:o.z,hw:(o.w*c+o.d*s)/2,hd:(o.w*s+o.d*c)/2}}
+function blocked(x,z){const r=.24;if(x<.24||x>9.76||z<.24||z>7.76)return true;for(const o of colliders){if(!o.visible)continue;const b=aabb(o);if(x+r>b.x-b.hw&&x-r<b.x+b.hw&&z+r>b.z-b.hd&&z-r<b.z+b.hd)return true}return false}
+function moveFP(dx,dz){const nx=cam.fp[0]+dx,nz=cam.fp[2]+dz;if(!blocked(nx,cam.fp[2]))cam.fp[0]=nx;if(!blocked(cam.fp[0],nz))cam.fp[2]=nz}
+function rayFromScreen(px,py){const r=canvas.getBoundingClientRect(),x=(px-r.left)/r.width*2-1,y=1-(py-r.top)/r.height*2,inv=inv4(lastVP),a=tr4(inv,[x,y,-1,1]),b=tr4(inv,[x,y,1,1]);for(const q of [a,b]){q[0]/=q[3];q[1]/=q[3];q[2]/=q[3]}return{p:a,d:norm(sub(b,a))}}
+function rayHitAABB(ray,o){const b=aabb(o),min=[b.x-b.hw,.05,b.z-b.hd],max=[b.x+b.hw,o.h*1.05,b.z+b.hd];let tmin=0,tmax=30;for(const [i,idx] of [[0,0],[1,1],[2,2]]){const q=idx===0?ray.p[0]:idx===1?ray.p[1]:ray.p[2],d=idx===0?ray.d[0]:idx===1?ray.d[1]:ray.d[2],mn=min[idx],mx=max[idx];if(Math.abs(d)<1e-6){if(q<mn||q>mx)return null}else{let t1=(mn-q)/d,t2=(mx-q)/d;if(t1>t2)[t1,t2]=[t2,t1];tmin=Math.max(tmin,t1);tmax=Math.min(tmax,t2);if(tmin>tmax)return null}}return tmin}
+function pick(px,py,maxD=20){const ray=rayFromScreen(px,py);let best=null,bt=maxD;for(const o of interactables){const t=rayHitAABB(ray,o);if(t!==null&&t<bt){bt=t;best=o}}return best}
+function interactCenter(){const o=pick(innerWidth/2,innerHeight/2,2.2);if(o)toggle(o);else showToast('前方沒有可互動門片')}
+
+orbitBtn.onclick=()=>setMode('orbit');fpBtn.onclick=()=>setMode('fp');cutBtn.onclick=()=>{cut=!cut;cutBtn.textContent='剖牆：'+(cut?'開':'關');cutBtn.classList.toggle('active',cut)};resetBtn.onclick=resetView;panelBtn.onclick=()=>side.style.display=side.style.display==='none'?'block':'none';interactBtn.onclick=interactCenter;
+document.querySelectorAll('[data-room]').forEach(b=>b.onclick=()=>locate(b.dataset.room));
+window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault()},{passive:false});window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+let ptr=null,dragged=false,pinch=null;
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'&&mode==='fp'&&e.clientX<innerWidth*.42)return;canvas.setPointerCapture(e.pointerId);ptr={id:e.pointerId,x:e.clientX,y:e.clientY,button:e.button,shift:e.shiftKey};dragged=false});
+canvas.addEventListener('pointermove',e=>{if(!ptr||ptr.id!==e.pointerId)return;const dx=e.clientX-ptr.x,dy=e.clientY-ptr.y;if(Math.hypot(dx,dy)>2)dragged=true;ptr.x=e.clientX;ptr.y=e.clientY;if(mode==='orbit'){if(ptr.button===2||ptr.shift){const s=cam.dist*.0027,cy=Math.cos(cam.yaw),sy=Math.sin(cam.yaw);cam.target[0]+=(-cy*dx+sy*dy)*s;cam.target[2]+=(-sy*dx-cy*dy)*s}else{cam.yaw-=dx*.006;cam.pitch=Math.max(.15,Math.min(1.47,cam.pitch-dy*.006))}}else{cam.fyaw-=dx*.005;cam.fpitch=Math.max(-1.15,Math.min(1.15,cam.fpitch-dy*.0045))}});
+canvas.addEventListener('pointerup',e=>{if(ptr&&ptr.id===e.pointerId){if(!dragged){const o=pick(e.clientX,e.clientY,mode==='fp'?2.5:40);if(o)toggle(o)}ptr=null}});
+canvas.addEventListener('wheel',e=>{if(mode==='orbit'){cam.dist=Math.max(3.2,Math.min(24,cam.dist*Math.exp(e.deltaY*.001)));e.preventDefault()}},{passive:false});
+// touch pinch for orbit
+canvas.addEventListener('touchstart',e=>{if(mode!=='orbit'||e.touches.length!==2)return;const a=e.touches[0],b=e.touches[1];pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),dist:cam.dist}},{passive:true});
+canvas.addEventListener('touchmove',e=>{if(mode!=='orbit'||e.touches.length!==2||!pinch)return;const a=e.touches[0],b=e.touches[1],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);cam.dist=Math.max(3.2,Math.min(24,pinch.dist*pinch.d/Math.max(d,10)))},{passive:true});canvas.addEventListener('touchend',()=>pinch=null,{passive:true});
+// joystick
+const joyEl=document.getElementById('joy'),knob=document.getElementById('knob');let jid=null;
+function joySet(e){const r=joyEl.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),m=Math.min(40,Math.hypot(dx,dy)),a=Math.atan2(dy,dx);joy.x=Math.cos(a)*(m/40);joy.y=Math.sin(a)*(m/40);knob.style.transform=`translate(${joy.x*36}px,${joy.y*36}px)`}
+joyEl.addEventListener('pointerdown',e=>{jid=e.pointerId;joyEl.setPointerCapture(jid);joySet(e)});joyEl.addEventListener('pointermove',e=>{if(e.pointerId===jid)joySet(e)});joyEl.addEventListener('pointerup',e=>{if(e.pointerId===jid){jid=null;joy.x=joy.y=0;knob.style.transform=''}});
+
+function resize(){const dpr=Math.min(devicePixelRatio||1,2),w=Math.floor(innerWidth*dpr),h=Math.floor(innerHeight*dpr);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h)}}
+function cameraVP(){const asp=canvas.width/canvas.height,P=perspective(Math.PI/3,asp,.05,80);let eye,at;if(mode==='orbit'){const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch);eye=[cam.target[0]+Math.cos(cam.yaw)*cp*cam.dist,cam.target[1]+sp*cam.dist+1.0,cam.target[2]+Math.sin(cam.yaw)*cp*cam.dist];at=[cam.target[0],.8,cam.target[2]]}else{eye=cam.fp;const f=[Math.sin(cam.fyaw)*Math.cos(cam.fpitch),Math.sin(cam.fpitch),-Math.cos(cam.fyaw)*Math.cos(cam.fpitch)];at=add(eye,f)}return mm(P,lookAt(eye,at))}
+function draw(o,vp){if(!o.visible)return;let h=o.h,y=o.y;if(cut&&mode==='orbit'&&o.cuttable){h=Math.min(h,1.12);y=h/2}const model=mm(T(o.x,y,o.z),mm(RY(o.ry),S(o.w,h,o.d)));gl.uniformMatrix4fv(loc.m,false,model);gl.uniformMatrix4fv(loc.vp,false,vp);gl.uniform4fv(loc.c,o.color);if(o.color[3]<.99){gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.disable(gl.CULL_FACE)}else{gl.disable(gl.BLEND);gl.enable(gl.CULL_FACE)}gl.drawArrays(gl.TRIANGLES,0,36)}
+function drawMini(){const w=mini.width,h=mini.height,s=Math.min((w-18)/10,(h-18)/8),ox=(w-10*s)/2,oy=(h-8*s)/2;mg.clearRect(0,0,w,h);mg.fillStyle='#efeadd';mg.fillRect(0,0,w,h);mg.save();mg.translate(ox,oy);mg.lineWidth=6;mg.strokeStyle='#5f6260';mg.strokeRect(0,0,10*s,8*s);mg.lineWidth=3;mg.strokeStyle='#747978';const L=(x1,z1,x2,z2)=>{mg.beginPath();mg.moveTo(x1*s,z1*s);mg.lineTo(x2*s,z2*s);mg.stroke()};L(0,4.2,4.15,4.2);L(5.05,4.2,5.2,4.2);L(5.2,4.2,5.2,8);L(5.2,4.6,6,4.6);L(6.9,4.6,7.6,4.6);L(7.6,4.6,8.2,4.6);L(9.1,4.6,10,4.6);L(7.6,4.6,7.6,8);mg.fillStyle='rgba(91,125,142,.28)';mg.fillRect(.2*s,.2*s,6.2*s,3.8*s);mg.fillStyle='rgba(159,151,124,.23)';mg.fillRect(.2*s,4.25*s,4.9*s,3.55*s);mg.fillStyle='rgba(120,139,152,.18)';mg.fillRect(5.25*s,4.65*s,2.3*s,3.15*s);mg.fillStyle='rgba(120,160,160,.20)';mg.fillRect(7.65*s,4.65*s,2.15*s,3.15*s);if(mode==='fp'){mg.fillStyle='#d13c2f';mg.beginPath();mg.arc(cam.fp[0]*s,cam.fp[2]*s,8,0,Math.PI*2);mg.fill();mg.strokeStyle='#d13c2f';mg.lineWidth=4;mg.beginPath();mg.moveTo(cam.fp[0]*s,cam.fp[2]*s);mg.lineTo((cam.fp[0]+Math.sin(cam.fyaw)*.65)*s,(cam.fp[2]-Math.cos(cam.fyaw)*.65)*s);mg.stroke()}else{mg.fillStyle='#247aa5';mg.beginPath();mg.arc(cam.target[0]*s,cam.target[2]*s,7,0,Math.PI*2);mg.fill()}mg.restore()}
+let prev=performance.now();
+function tick(t){resize();const dt=Math.min(.04,(t-prev)/1000);prev=t;if(mode==='fp'){let f=0,r=0;if(keys['w']||keys['arrowup'])f+=1;if(keys['s']||keys['arrowdown'])f-=1;if(keys['d']||keys['arrowright'])r+=1;if(keys['a']||keys['arrowleft'])r-=1;f+=-joy.y;r+=joy.x;const l=Math.hypot(f,r)||1,fwd=[Math.sin(cam.fyaw),-Math.cos(cam.fyaw)],right=[Math.cos(cam.fyaw),Math.sin(cam.fyaw)],spd=2.25*dt;moveFP((f/l*fwd[0]+r/l*right[0])*spd,(f/l*fwd[1]+r/l*right[1])*spd)}for(const o of interactables){const want=o.targetOpen;if(Math.abs(o.open-want)>.001){o.open+=Math.sign(want-o.open)*Math.min(Math.abs(want-o.open),dt*3.0);const save=o.targetOpen;o.targetOpen=o.open;applyHinge(o);o.targetOpen=save}else applyHinge(o)}lastVP=cameraVP();gl.clearColor(.73,.82,.86,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);for(const o of meshes)if(o.color[3]>=.99)draw(o,lastVP);for(const o of meshes)if(o.color[3]<.99)draw(o,lastVP);drawMini();requestAnimationFrame(tick)}requestAnimationFrame(tick);
+
+// ---------- built-in browser self-test ----------
+window.__walkin={setMode,locate,toggle,blocked,rooms,doors:{entryDoor,masterDoor,bed2Door,bathDoor,cab1,cab2},cam,interactables};
+if(new URLSearchParams(location.search).get('selftest')==='1')setTimeout(()=>{const out=[];try{out.push('WebGL: '+(!!gl?'PASS':'FAIL'));out.push('Meshes: '+(meshes.length>40?'PASS':'FAIL')+' ('+meshes.length+')');out.push('Interactables: '+(interactables.length>=6?'PASS':'FAIL')+' ('+interactables.length+')');setMode('fp');const startBlocked=blocked(cam.fp[0],cam.fp[2]);out.push('Start free: '+(!startBlocked?'PASS':'FAIL'));toggle(masterDoor);out.push('Master door open: '+(masterDoor.targetOpen===1?'PASS':'FAIL'));locate('bath');out.push('Bath locate: '+(Math.abs(cam.fp[0]-rooms.bath.p[0])<.01?'PASS':'FAIL'));const mobileOK=getComputedStyle(document.getElementById('joy')).display!=='none' || innerWidth>760;out.push('Mobile controls/layout: '+(mobileOK?'PASS':'FAIL')+' width='+innerWidth);setMode('orbit');cut=true;out.push('Cutaway flag: '+(cut?'PASS':'FAIL'));document.getElementById('selfTest').style.display='block';document.getElementById('selfTest').textContent=out.join('\n');document.title='SELFTEST '+(out.every(x=>!x.includes('FAIL'))?'PASS':'FAIL');}catch(e){document.title='SELFTEST FAIL';document.getElementById('selfTest').style.display='block';document.getElementById('selfTest').textContent='ERROR '+e.stack}},700);
+})();
+</script>
+</body>
+</html>
